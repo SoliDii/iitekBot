@@ -33,11 +33,10 @@ namespace TestBot.Dialogs
                 switch (commandResult.command)
                 {
                     case "xkcd":
-                        var replyMessage = HandleXkcdCommands(commandResult.text, context);
-                        await context.PostAsync(replyMessage);
+                        await context.PostAsync(HandleXkcdCommands(commandResult.text, context));
                         break;
-                    case "jee":
-                        await context.PostAsync("jee");
+                    case "fingerpori":
+                        await context.PostAsync(HandleFingerporiCommands(commandResult.text, context));
                         break;
                     default:
                         break;
@@ -82,6 +81,25 @@ namespace TestBot.Dialogs
 
         }
 
+        public static IMessageActivity HandleFingerporiCommands(string text, IDialogContext context)
+        {
+            var fingerporiUrls = WebScraper();
+            var replyMessage = context.MakeMessage();
+
+            if (text.StartsWith("new"))
+            {
+                Attachment attachment = new Attachment
+                {
+                    ContentType = "image/jpg",
+                    ContentUrl = fingerporiUrls.imageUrl,
+                    Name = "Fingerpori sarjakuva"
+                };
+                replyMessage.Attachments.Add(attachment);
+                replyMessage.Text = String.Format("Helsingin Sanomien viimeisin Fingerpori\r\nUrl: {0}", fingerporiUrls.comicUrl);
+            }
+            return replyMessage;
+        }
+
         public static IMessageActivity HandleXkcdCommands(string text, IDialogContext context)
         {
             string xkcdUrlStart = "https://xkcd.com/";
@@ -112,7 +130,7 @@ namespace TestBot.Dialogs
                 string json = wc.DownloadString(completeString);
                 Xkcd deserializedXkcdJson = JsonConvert.DeserializeObject<Xkcd>(json);
 
-                
+
                 Attachment attachment = new Attachment
                 {
                     ContentType = "image/jpg",
@@ -125,6 +143,40 @@ namespace TestBot.Dialogs
 
             }
             return replyMessage;
+        }
+
+        public static (string imageUrl, string comicUrl) WebScraper()
+        {
+            WebClient client = new WebClient();
+
+            string urlForComicListWebsite = "https://www.hs.fi/fingerpori/";
+            string htmlCode = client.DownloadString(urlForComicListWebsite);
+
+            int latestStartIndex = htmlCode.IndexOf("<a href=\"/fingerpori/");
+
+            htmlCode = htmlCode.Substring(latestStartIndex, 1000);
+
+
+            int urlEndStartIndex = htmlCode.IndexOf("car");
+            int urlEndEndIndex = htmlCode.IndexOf("html") + 4;
+            string urlEndForLatestComic = htmlCode.Substring(urlEndStartIndex, urlEndEndIndex - urlEndStartIndex);
+
+
+            int imageUrlStartIndex = htmlCode.IndexOf("data-srcset=\"//hs.mediadelivery.fi/img/") + 13;
+            int imageUrlEndIndex = htmlCode.IndexOf(".jpg 1920w") + 4;
+
+            string https = "https:";
+            string urlForLatestComicImage = htmlCode.Substring(imageUrlStartIndex, imageUrlEndIndex - imageUrlStartIndex);
+
+
+
+            string imageUrl = https + urlForLatestComicImage;
+            string UrlForComicWebsite  = urlForComicListWebsite + urlEndForLatestComic;
+
+            client.Dispose();
+
+            return (imageUrl, UrlForComicWebsite);
+
         }
     }
 }
