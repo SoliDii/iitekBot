@@ -5,6 +5,7 @@ using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Connector;
 using Newtonsoft.Json;
 using TestBot.Models;
+using FluentScheduler;
 
 namespace TestBot.Dialogs
 {
@@ -22,12 +23,11 @@ namespace TestBot.Dialogs
         {
             var activity = await result as Activity;
 
-
             if (activity == null) return;
 
             string text = activity.Text;
             var commandResult = CheckAndFormatCommandMessage(text);
-
+            var replyMessage = context.MakeMessage();
             if (commandResult.isCommand)
             {
                 switch (commandResult.command)
@@ -37,6 +37,10 @@ namespace TestBot.Dialogs
                         break;
                     case "fingerpori":
                         await context.PostAsync(HandleFingerporiCommands(commandResult.text, context));
+                        break;
+                    case "remind":
+                        replyMessage = HandleRemindCommand(commandResult.text, context);
+                        await context.PostAsync(replyMessage);
                         break;
                     default:
                         break;
@@ -142,6 +146,26 @@ namespace TestBot.Dialogs
                     deserializedXkcdJson.Num);
 
             }
+            return replyMessage;
+        }
+
+   
+        public static IMessageActivity HandleRemindCommand(string text, IDialogContext context)
+        {
+            var replyMessage = context.MakeMessage();
+            switch (text.ToLower())
+            {
+                case "stop":
+                    JobManager.RemoveAllJobs();
+                    replyMessage.Text = "Reminders stopped";
+                    break;
+                default:
+                    JobManager.AddJob(async () => await context.PostAsync(!String.IsNullOrEmpty(text) ? text : "REMINDER"), (s) => s.ToRunEvery(5).Seconds());
+
+                    replyMessage.Text = "Reminder saved";
+                    break;
+            }
+
             return replyMessage;
         }
 

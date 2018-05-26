@@ -5,6 +5,7 @@ using Microsoft.Bot.Builder.Dialogs.Internals;
 using Autofac;
 using Microsoft.Bot.Connector;
 using System.Reflection;
+using FluentScheduler;
 
 namespace TestBot
 {
@@ -12,6 +13,10 @@ namespace TestBot
     {
         protected void Application_Start()
         {
+            JobManager.Initialize(new Registry());
+
+
+
             GlobalConfiguration.Configure(WebApiConfig.Register);
 
             Conversation.UpdateContainer(
